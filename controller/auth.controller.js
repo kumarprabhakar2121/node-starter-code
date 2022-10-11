@@ -124,6 +124,39 @@ const secret = async (req, res) => {
   }
 };
 
+const getMyAccount = async (req, res) => {
+  try {
+    const id = req.user._id;
+    UserModel.findById(id, { password: 0, __v: 0 })
+      .then((user) => {
+        if (user) {
+          return res.status(200).json({
+            success: true,
+            message: "Account Details Found",
+            userData: user,
+          });
+        }
+        return res.status(400).json({
+          success: true,
+          message: "Account Details Not Found",
+        });
+      })
+      .catch((error) => {
+        return res.status(400).json({
+          success: true,
+          message: "Error fetching account details",
+          error,
+        });
+      });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong!",
+      error,
+    });
+  }
+};
+
 const logout = async (req, res) => {
   try {
     res.cookie("token", null, {
@@ -175,15 +208,14 @@ const users = async (req, res) => {
       };
     }
 
-    result.results = await UserModel
-      .find(
-        {},
-        {
-          __v: 0,
-          updatedAt: 0,
-          createdAt: 0,
-        }
-      )
+    result.results = await UserModel.find(
+      {},
+      {
+        __v: 0,
+        updatedAt: 0,
+        createdAt: 0,
+      }
+    )
       .limit(limit)
       .skip(startIndex);
     res.paginatedResult = result;
@@ -203,4 +235,5 @@ module.exports = {
   signup,
   logout,
   users,
+  getMyAccount,
 };
