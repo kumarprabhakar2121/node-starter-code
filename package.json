@@ -1,5 +1,5 @@
 {
-  "name": "node-starter-code",
+  "name": "starter-code",
   "version": "1.0.0",
   "description": "Node boilerplate code with jwt authentication support using cookies",
   "main": "index.js",
@@ -8,7 +8,7 @@
     "start:dev": "nodemon index.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Prabhakar Kumar",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -21,5 +21,13 @@
   },
   "devDependencies": {
     "nodemon": "^2.0.15"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kumarprabhakar2121/node-starter-code.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kumarprabhakar2121/node-starter-code/issues"
+  },
+  "homepage": "https://github.com/kumarprabhakar2121/node-starter-code#readme"
 }
