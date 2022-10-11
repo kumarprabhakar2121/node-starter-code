@@ -1,11 +1,11 @@
 {
-  "name": "auth-sustem",
+  "name": "node-starter-code",
   "version": "1.0.0",
-  "description": "",
+  "description": "Node boilerplate code with jwt authentication support using cookies",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start:dev": "nodemon index.js"
   },
   "keywords": [],
   "author": "",
@@ -16,10 +16,8 @@
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
     "jsonwebtoken": "^8.5.1",
-    "jwt-redis": "^6.0.0",
-    "jwtr": "^0.5.0",
     "mongoose": "^6.0.13",
-    "redis": "^4.0.1"
+    "morgan": "^1.10.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.15"
