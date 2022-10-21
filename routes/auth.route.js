@@ -12,6 +12,10 @@ router.route("/get-my-account").get(isLoginCheck, authController.getMyAccount);
 
 router.route("/logout").get(isLoginCheck, authController.logout);
 
-router.route("/users/list").get(isLoginCheck, authController.users);
+router.route("/users/").get(authController.users);
+
+router.route("/verify-otp").post(authController.verifyOTP);
+
+router.route("/request-otp").post(authController.requestOTP);
 
 module.exports = router;

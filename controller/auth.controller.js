@@ -2,10 +2,20 @@ const UserModel = require("../model/user.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = process.env;
+const nodemailer = require("nodemailer");
+const { createMessage, mailConfig } = require("../config/nodemailer.config");
+const getSixDigitOTP = require("../helper/getSixDigitOTP");
 
 const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+
+    if (!(email && password && name)) {
+      return res.status(400).json({
+        success: false,
+        message: "Enter name, email and password",
+      });
+    }
 
     const find = await UserModel.findOne({ email });
     if (find) {
@@ -14,24 +24,33 @@ const signup = async (req, res) => {
         message: `Account already exists with email :${email}`,
       });
     }
-
+    let otp = await getSixDigitOTP();
     const user = new UserModel({
       name,
       email,
       password: await bcrypt.hash(password, 10),
+      otpDetails: { otp, expiresAt: Date.now() },
     });
     user
       .save()
-      .then((data) => {
+      .then(async (data) => {
         if (data) {
+          let transporter = await nodemailer.createTransport(
+            await mailConfig()
+          );
+
+          const mailStatus = await transporter.sendMail(
+            await createMessage(email, otp)
+          );
           return res.status(200).json({
             success: true,
-            message: "User Signup Successful!",
+            message: `User Signup Successful! Verify OTP Now`,
+            mailStatus: mailStatus.response,
           });
         }
         return res.status(400).json({
           success: false,
-          message: "Error registering user!",
+          message: `Error registering user!`,
         });
       })
       .catch((error) => {
@@ -115,6 +134,83 @@ const secret = async (req, res) => {
       success: true,
       message: "This is a secret route, only logged in users can see this.",
     });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong!",
+      error,
+    });
+  }
+};
+
+const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    UserModel.findOne({ email }, { otpDetails: 1, _id: 1 })
+      .then((data) => {
+        if (data) {
+          console.log({ data });
+          const oldDate = data.otpDetails.expiresAt;
+          const newDate = Date.now();
+          let diffInSec = (newDate - oldDate) / 1000;
+          console.log(
+            `Time difference = ${(newDate - oldDate) / 1000} seconds`
+          );
+          // console.log({ diffInSec });
+          if (diffInSec > 600) {
+            return res.status(400).json({
+              success: false,
+              message: `Time Expired! Request for new OTP`,
+            });
+          }
+          if (otp !== data.otpDetails.otp) {
+            return res.status(400).json({
+              success: false,
+              message: "WRONG OTP! TRY AGAIN",
+            });
+          }
+          console.log("OTP MATCH");
+          UserModel.findByIdAndUpdate(
+            data._id,
+            {
+              $set: {
+                isVerified: true,
+              },
+            },
+            { new: true }
+          )
+            .then((updatedData) => {
+              if (updatedData) {
+                return res.status(200).json({
+                  success: true,
+                  message: "User verified successfully",
+                  userDetails: {
+                    name: updatedData.name,
+                    isVerified: updatedData.isVerified,
+                  },
+                });
+              }
+              return res.status(400).json({
+                success: false,
+                message: "User not found ",
+              });
+            })
+            .catch((error) => {
+              return res.status(400).json({
+                success: false,
+                message: error?.message,
+                error,
+              });
+            });
+        }
+      })
+      .catch((error) => {
+        return res.status(400).json({
+          success: false,
+          message: error?.message,
+          error,
+        });
+      });
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -229,6 +325,70 @@ const users = async (req, res) => {
   }
 };
 
+const requestOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Enter your email address to request OTP",
+      });
+    }
+    const find = await UserModel.findOne({ email });
+    if (!find) {
+      return res.status(400).json({
+        success: false,
+        message: `Account does not exists with email :${email}`,
+      });
+    }
+    if (find.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: `Account is already verified`,
+      });
+    }
+    let otp = await getSixDigitOTP();
+    let otpDetails = {
+      otp,
+      expiresAt: Date.now(),
+    };
+    UserModel.findByIdAndUpdate(
+      find._id,
+      { $set: { otpDetails } },
+      { new: true }
+    )
+      .then(async (data) => {
+        if (data) {
+          let transporter = await nodemailer.createTransport(
+            await mailConfig()
+          );
+
+          const mailStatus = await transporter.sendMail(
+            await createMessage(email, otp)
+          );
+
+          if (mailStatus) {
+            return res.status(200).json({
+              success: true,
+              message: "OTP Sent to Email Address",
+              mailStatus: mailStatus.response,
+            });
+          }
+          return res.status(400).json({
+            success: false,
+            message: "Error sending email",
+          });
+        }
+      })
+      .catch();
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong!",
+      error,
+    });
+  }
+};
 module.exports = {
   secret,
   login,
@@ -236,4 +396,6 @@ module.exports = {
   logout,
   users,
   getMyAccount,
+  verifyOTP,
+  requestOTP,
 };
